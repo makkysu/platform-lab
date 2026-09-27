@@ -23,19 +23,20 @@ if ((mem < 90)); then ok "RAM ${mem}%"; else warn "RAM ${mem}%"; fi
 
 while read -r use mnt; do
   if ((${use%\%} < DISK_LIMIT)); then ok "disk $mnt $use"; else fail "disk $mnt $use"; fi
-done < <(df --output=pcent,target -x tmpfs -x devtmpfs -x overlay | tail -n +2)
+done < <(df --output=pcent,target -x tmpfs -x devtmpfs -x overlay -x efivarfs | tail -n +2)
 
 echo "-- listening TCP --"
 ss -tlnH | awk '{print "  " $4}'
 
 for url in "${TARGETS[@]}"; do
-  host=$(awk -F/ '{print $3}' <<<"$url")
+    host=$(awk -F/ '{print $3}' <<<"$url")
+    host=${host%%:*}
   if ! getent hosts "$host" >/dev/null; then
     fail "DNS $host"
     continue
   fi
   ok "DNS $host"
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$url" || echo 000)
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$url" || echo true)
   if [[ $code =~ ^[23] ]]; then ok "HTTP $url -> $code"; else fail "HTTP $url -> $code"; fi
 done
 
